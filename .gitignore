@@ -1,0 +1,73 @@
+#######################################
+# OS Files
+#######################################
+.DS_Store
+Thumbs.db
+
+#######################################
+# IDE Files
+#######################################
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+#######################################
+# Environment Files
+#######################################
+.env
+.env.*
+!.env.example
+
+#######################################
+# Logs
+#######################################
+*.log
+logs/
+
+#######################################
+# Spring Boot (Backend)
+#######################################
+transitops-backend/target/
+transitops-backend/build/
+transitops-backend/.gradle/
+transitops-backend/out/
+
+# Maven Wrapper Logs
+transitops-backend/.mvn/wrapper/maven-wrapper.jar
+
+#######################################
+# React (Frontend)
+#######################################
+transitops-frontend/node_modules/
+transitops-frontend/build/
+transitops-frontend/dist/
+transitops-frontend/.cache/
+
+#######################################
+# npm / yarn / pnpm logs
+#######################################
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+#######################################
+# Temporary Files
+#######################################
+*.tmp
+*.temp
+*.swp
+*.swo
+
+#######################################
+# Coverage
+#######################################
+coverage/
+
+#######################################
+# Misc
+#######################################
+*.pid
+*.seed
