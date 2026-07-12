@@ -1,119 +1,74 @@
 package com.transitops.backend.security;
 
-import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
-import org.springframework.security.oauth2.jwt.JwtClaimsSet;
-import org.springframework.security.oauth2.jwt.JwtEncoder;
-import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.security.oauth2.jwt.JwsHeader;
+import javax.crypto.SecretKey;
+
 import org.springframework.stereotype.Service;
+
+import com.transitops.backend.auth.model.User;
+import com.transitops.backend.config.AppProperties;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 
 @Service
 public class JwtService {
+    private final AppProperties properties;
+    private final SecretKey signingKey;
 
-    private final JwtEncoder jwtEncoder;
-    private final String issuer;
-    private final String audience;
-    private final Duration accessTokenDuration;
-
-    public JwtService(
-            JwtEncoder jwtEncoder,
-            @Value("${app.jwt.issuer}")
-            String issuer,
-            @Value("${app.jwt.audience}")
-            String audience,
-            @Value("${app.jwt.access-token-minutes}")
-            long accessTokenMinutes) {
-
-        if (accessTokenMinutes <= 0) {
-            throw new IllegalArgumentException(
-                "Access-token duration must be positive"
-            );
+    public JwtService(AppProperties properties) {
+        this.properties = properties;
+        byte[] keyBytes = Decoders.BASE64.decode(properties.getJwt().getSecret());
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException("JWT secret must decode to at least 32 bytes");
         }
-
-        this.jwtEncoder = jwtEncoder;
-        this.issuer = issuer;
-        this.audience = audience;
-
-        this.accessTokenDuration =
-            Duration.ofMinutes(accessTokenMinutes);
+        this.signingKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateAccessToken(
-            TransitOpsUserPrincipal principal) {
-
-        Instant issuedAt = Instant.now();
-        Instant expiresAt =
-            issuedAt.plus(accessTokenDuration);
-
-        List<String> authorities =
-            principal.getAuthorities()
-                .stream()
-                .map(authority ->
-                    authority.getAuthority()
-                )
-                .distinct()
+    public String createAccessToken(User user) {
+        Instant now = Instant.now();
+        Instant expiry = now.plus(properties.getJwt().getAccessTokenTtl());
+        List<String> roles = user.getRoles().stream()
+                .map(role -> role.getName().name())
                 .sorted()
                 .toList();
-
-        JwtClaimsSet claims =
-            JwtClaimsSet.builder()
-                .issuer(issuer)
-                .subject(principal.getUsername())
-                .audience(List.of(audience))
-                .issuedAt(issuedAt)
-                .notBefore(issuedAt)
-                .expiresAt(expiresAt)
-
-                .claim(
-                    "uid",
-                    principal.getUserId()
-                )
-
-                .claim(
-                    "name",
-                    principal.getFullName()
-                )
-
-                .claim(
-                    "authorities",
-                    authorities
-                )
-
-                .claim(
-                    "ver",
-                    principal.getTokenVersion()
-                )
-
-                .claim(
-                    "mustChangePassword",
-                    principal
-                        .isMustChangePassword()
-                )
-
-                .build();
-
-        JwsHeader headers =
-            JwsHeader
-                .with(MacAlgorithm.HS256)
-                .type("JWT")
-                .build();
-
-        return jwtEncoder
-            .encode(
-                JwtEncoderParameters.from(
-                    headers,
-                    claims
-                )
-            )
-            .getTokenValue();
+        return Jwts.builder()
+                .issuer(properties.getJwt().getIssuer())
+                .subject(user.getEmail())
+                .id(UUID.randomUUID().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .claim("type", "access")
+                .claim("uid", user.getId())
+                .claim("name", user.getName())
+                .claim("roles", roles)
+                .signWith(signingKey)
+                .compact();
     }
 
-    public long getAccessTokenExpiresInSeconds() {
-        return accessTokenDuration.toSeconds();
+    public String extractSubject(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    public boolean isValid(String token, String expectedUsername) {
+        Claims claims = parseClaims(token);
+        return expectedUsername.equalsIgnoreCase(claims.getSubject())
+                && "access".equals(claims.get("type", String.class))
+                && claims.getExpiration().after(new Date());
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(signingKey)
+                .requireIssuer(properties.getJwt().getIssuer())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
