@@ -92,4 +92,12 @@ public class User extends BaseEntity {
         nullable = false
     )
     private long tokenVersion = 0L;
+    @Column(
+    name = "must_change_password",
+    nullable = false
+)
+private boolean mustChangePassword = true;
+
+@Column(name = "password_changed_at")
+private Instant passwordChangedAt;
 }

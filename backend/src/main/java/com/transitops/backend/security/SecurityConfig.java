@@ -7,6 +7,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -22,76 +26,97 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-   @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
-private String allowedOrigins;
+    @Value(
+        "${app.cors.allowed-origins:"
+            + "http://localhost:5173,"
+            + "http://localhost:3000}"
+    )
+    private String allowedOrigins;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            AuthenticationProvider authenticationProvider,
+            JwtToAuthenticationConverter jwtConverter,
+            RestAuthenticationEntryPoint authenticationEntryPoint,
+            RestAccessDeniedHandler accessDeniedHandler)
             throws Exception {
 
         http
             .csrf(AbstractHttpConfigurer::disable)
 
             .cors(cors ->
-                cors.configurationSource(corsConfigurationSource())
+                cors.configurationSource(
+                    corsConfigurationSource()
+                )
             )
 
             .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                session.sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS
+                )
             )
 
-            .authorizeHttpRequests(authorize -> authorize
-
-                .requestMatchers(HttpMethod.OPTIONS, "/**")
-                .permitAll()
-
-                .requestMatchers(
-                    "/api/health",
-                    "/api/auth/login",
-                    "/api/auth/refresh"
-                )
-                .permitAll()
-
-                .anyRequest()
-                .authenticated()
+            .authenticationProvider(
+                authenticationProvider
             )
 
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
+            .authorizeHttpRequests(authorize ->
+                authorize
 
-            .exceptionHandling(exception -> exception
+                    .requestMatchers(
+                        HttpMethod.OPTIONS,
+                        "/**"
+                    )
+                    .permitAll()
 
-                .authenticationEntryPoint(
-                    (request, response, authenticationException) -> {
+                    .requestMatchers(
+                        "/api/health",
+                        "/api/auth/login",
+                        "/api/auth/refresh"
+                    )
+                    .permitAll()
 
-                        response.setStatus(401);
-                        response.setContentType("application/json");
+                    .anyRequest()
+                    .authenticated()
+            )
 
-                        response.getWriter().write("""
-                            {
-                              "status": 401,
-                              "error": "Unauthorized",
-                              "message": "Authentication is required"
-                            }
-                            """);
-                    }
-                )
+            .oauth2ResourceServer(oauth2 ->
+                oauth2
 
-                .accessDeniedHandler(
-                    (request, response, accessDeniedException) -> {
+                    .authenticationEntryPoint(
+                        authenticationEntryPoint
+                    )
 
-                        response.setStatus(403);
-                        response.setContentType("application/json");
+                    .accessDeniedHandler(
+                        accessDeniedHandler
+                    )
 
-                        response.getWriter().write("""
-                            {
-                              "status": 403,
-                              "error": "Forbidden",
-                              "message": "You do not have permission to access this resource"
-                            }
-                            """);
-                    }
-                )
+                    .jwt(jwt ->
+                        jwt.jwtAuthenticationConverter(
+                            jwtConverter
+                        )
+                    )
+            )
+
+            .exceptionHandling(exception ->
+                exception
+
+                    .authenticationEntryPoint(
+                        authenticationEntryPoint
+                    )
+
+                    .accessDeniedHandler(
+                        accessDeniedHandler
+                    )
+            )
+
+            .formLogin(
+                AbstractHttpConfigurer::disable
+            )
+
+            .httpBasic(
+                AbstractHttpConfigurer::disable
             );
 
         return http.build();
@@ -103,35 +128,72 @@ private String allowedOrigins;
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public AuthenticationProvider authenticationProvider(
+            DatabaseUserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder) {
 
-        CorsConfiguration configuration = new CorsConfiguration();
+        DaoAuthenticationProvider provider =
+            new DaoAuthenticationProvider(
+                userDetailsService
+            );
 
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-            .map(String::trim)
-            .filter(origin -> !origin.isBlank())
-            .toList();
+        provider.setPasswordEncoder(
+            passwordEncoder
+        );
+
+        return provider;
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationProvider authenticationProvider) {
+
+        return new ProviderManager(
+            authenticationProvider
+        );
+    }
+
+    @Bean
+    public CorsConfigurationSource
+            corsConfigurationSource() {
+
+        CorsConfiguration configuration =
+            new CorsConfiguration();
+
+        List<String> origins =
+            Arrays.stream(
+                    allowedOrigins.split(",")
+                )
+                .map(String::trim)
+                .filter(origin ->
+                    !origin.isBlank()
+                )
+                .toList();
 
         configuration.setAllowedOrigins(origins);
 
-        configuration.setAllowedMethods(List.of(
-            "GET",
-            "POST",
-            "PUT",
-            "PATCH",
-            "DELETE",
-            "OPTIONS"
-        ));
+        configuration.setAllowedMethods(
+            List.of(
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE",
+                "OPTIONS"
+            )
+        );
 
-        configuration.setAllowedHeaders(List.of(
-            "Authorization",
-            "Content-Type",
-            "Accept"
-        ));
+        configuration.setAllowedHeaders(
+            List.of(
+                "Authorization",
+                "Content-Type",
+                "Accept"
+            )
+        );
 
-        configuration.setExposedHeaders(List.of(
-            "Authorization"
-        ));
+        configuration.setExposedHeaders(
+            List.of("Authorization")
+        );
 
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
@@ -139,7 +201,10 @@ private String allowedOrigins;
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
 
-        source.registerCorsConfiguration("/**", configuration);
+        source.registerCorsConfiguration(
+            "/**",
+            configuration
+        );
 
         return source;
     }
