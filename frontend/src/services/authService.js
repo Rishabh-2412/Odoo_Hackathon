@@ -1,66 +1,14 @@
-import apiClient from "./apiClient";
-import { USE_MOCK_DATA } from "../config/appConfig";
+import api from './api';
 
-const demoUsers = [
-  {
-    id: 1,
-    name: "Fleet Manager",
-    email: "manager@transitops.com",
-    password: "Transit@123",
-    role: "FLEET_MANAGER",
+export const authService = {
+  login: ({ email, password, deviceInfo }) => api.post('/auth/login', { email, password, deviceInfo }),
+  signup: ({ name, email, password }) => api.post('/auth/signup', { name, email, password }),
+  me: () => api.get('/auth/me'),
+  refresh: (refreshToken) => api.post('/auth/refresh', { refreshToken, deviceInfo: navigator.userAgent }),
+  logout: () => {
+    const refreshToken = localStorage.getItem('transitops_refresh_token');
+    return refreshToken
+      ? api.post('/auth/logout', { refreshToken, allDevices: false })
+      : Promise.resolve();
   },
-  {
-    id: 2,
-    name: "Dispatcher",
-    email: "dispatcher@transitops.com",
-    password: "Transit@123",
-    role: "DISPATCHER",
-  },
-  {
-    id: 3,
-    name: "Safety Officer",
-    email: "safety@transitops.com",
-    password: "Transit@123",
-    role: "SAFETY_OFFICER",
-  },
-  {
-    id: 4,
-    name: "Financial Analyst",
-    email: "finance@transitops.com",
-    password: "Transit@123",
-    role: "FINANCIAL_ANALYST",
-  },
-];
-
-const delay = (milliseconds) =>
-  new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-export const loginUser = async (credentials) => {
-  if (!USE_MOCK_DATA) {
-    const response = await apiClient.post("/auth/login", credentials);
-    return response.data;
-  }
-
-  await delay(700);
-
-  const matchedUser = demoUsers.find(
-    (user) =>
-      user.email.toLowerCase() === credentials.email.toLowerCase() &&
-      user.password === credentials.password,
-  );
-
-  if (!matchedUser) {
-    throw {
-      status: 401,
-      message: "Invalid email address or password.",
-      fieldErrors: {},
-    };
-  }
-
-  const { password, ...safeUser } = matchedUser;
-
-  return {
-    token: `demo-jwt-token-${safeUser.id}`,
-    user: safeUser,
-  };
 };

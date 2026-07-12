@@ -1,16 +1,50 @@
-# React + Vite
+# TransitOps Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend integrated with the supplied TransitOps Spring Boot backend.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Public Driver signup
+- JWT login with access and refresh tokens
+- Automatic access-token attachment and refresh-token rotation
+- Multiple-role RBAC navigation and protected routes
+- Driver dashboard and trip operations
+- Admin, Fleet Manager, Safety Officer, and Financial Analyst views
+- Real vehicle, driver, trip, maintenance, fuel, expense, report, and user APIs
 
-## React Compiler
+## Run
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+npm install
+Copy-Item .env.example .env -ErrorAction SilentlyContinue
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Frontend: `http://localhost:5173`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Backend: `http://localhost:8080/api`
+
+## Environment
+
+`.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+```
+
+## Driver signup flow
+
+1. Open `http://localhost:5173/signup`.
+2. Enter name, email, password, and confirmation.
+3. The frontend sends only `name`, `email`, and `password` to `POST /api/auth/signup`.
+4. The backend assigns exactly the `DRIVER` role.
+5. The user is redirected to login and can then open the Driver dashboard.
+
+The signup page does not expose a role selector. Higher-privilege roles can only be assigned by an authenticated Admin from the Users & Roles page.
+
+## Development Admin
+
+- Email: `admin@transitops.com`
+- Password: `Admin@123`
+
+Change development credentials before deployment.

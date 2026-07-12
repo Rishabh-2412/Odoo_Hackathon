@@ -1,28 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import ProtectedRoute from "../components/guards/ProtectedRoute";
-import LoginPage from "../pages/auth/LoginPage";
-import DashboardPage from "../pages/dashboard/DashboardPage";
-import AccessDeniedPage from "../pages/errors/AccessDeniedPage";
-import NotFoundPage from "../pages/errors/NotFoundPage";
-
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-      <Route path="/login" element={<LoginPage />} />
-
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route
-          path="/access-denied"
-          element={<AccessDeniedPage />}
-        />
-      </Route>
-
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
-  );
-}
-
-export default AppRoutes;
+import {Navigate,Route,Routes} from 'react-router-dom';
+import AppLayout from '../layouts/AppLayout';import ProtectedRoute from '../components/ProtectedRoute';import LoginPage from '../pages/LoginPage';import SignUpPage from '../pages/SignUpPage';import DashboardPage from '../pages/DashboardPage';import VehiclesPage from '../pages/VehiclesPage';import DriversPage from '../pages/DriversPage';import TripsPage from '../pages/TripsPage';import MaintenancePage from '../pages/MaintenancePage';import FuelLogsPage from '../pages/FuelLogsPage';import ExpensesPage from '../pages/ExpensesPage';import ReportsPage from '../pages/ReportsPage';import UsersRolesPage from '../pages/UsersRolesPage';import AccessDeniedPage from '../pages/AccessDeniedPage';import NotFoundPage from '../pages/NotFoundPage';
+const P=({children,roles})=><ProtectedRoute roles={roles}>{children}</ProtectedRoute>;
+export default function AppRoutes(){return <Routes><Route path="/login" element={<LoginPage/>}/><Route path="/signup" element={<SignUpPage/>}/><Route path="/access-denied" element={<AccessDeniedPage/>}/><Route element={<P><AppLayout/></P>}><Route index element={<Navigate to="/dashboard" replace/>}/><Route path="/dashboard" element={<DashboardPage/>}/><Route path="/vehicles" element={<P roles={['ADMIN','FLEET_MANAGER','DRIVER','SAFETY_OFFICER','FINANCIAL_ANALYST']}><VehiclesPage/></P>}/><Route path="/drivers" element={<P roles={['ADMIN','FLEET_MANAGER','DRIVER','SAFETY_OFFICER','FINANCIAL_ANALYST']}><DriversPage/></P>}/><Route path="/trips" element={<P roles={['ADMIN','FLEET_MANAGER','DRIVER','SAFETY_OFFICER','FINANCIAL_ANALYST']}><TripsPage/></P>}/><Route path="/maintenance" element={<P roles={['ADMIN','FLEET_MANAGER']}><MaintenancePage/></P>}/><Route path="/fuel-logs" element={<P roles={['ADMIN','FLEET_MANAGER','FINANCIAL_ANALYST']}><FuelLogsPage/></P>}/><Route path="/expenses" element={<P roles={['ADMIN','FLEET_MANAGER','FINANCIAL_ANALYST']}><ExpensesPage/></P>}/><Route path="/reports" element={<P roles={['ADMIN','FLEET_MANAGER','FINANCIAL_ANALYST']}><ReportsPage/></P>}/><Route path="/users-roles" element={<P roles={['ADMIN']}><UsersRolesPage/></P>}/></Route><Route path="*" element={<NotFoundPage/>}/></Routes>}
