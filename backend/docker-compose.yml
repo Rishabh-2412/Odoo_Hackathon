@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: transitops-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: transitops
+    ports:
+      - "3306:3306"
+    volumes:
+      - transitops_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: transitops-backend
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/transitops?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      JWT_SECRET: VHJhbnNpdE9wcy1EZXZlbG9wbWVudC1TZWNyZXQtS2V5LU11c3QtQmUtQ2hhbmdlZA==
+      APP_ADMIN_EMAIL: admin@transitops.com
+      APP_ADMIN_PASSWORD: Admin@123
+      CORS_ALLOWED_ORIGINS: http://localhost:5173,http://localhost:3000
+    ports:
+      - "8080:8080"
+    volumes:
+      - transitops_uploads:/app/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  transitops_mysql_data:
+  transitops_uploads:
